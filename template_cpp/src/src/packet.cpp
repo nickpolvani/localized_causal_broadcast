@@ -41,7 +41,7 @@ void Packet::toBytes(char * buffer){
     cur_pointer += num_processes_str.size() + 1;
 
     // write Vector Clock to buffer
-    std::size_t written_bytes = vector_clock.toBytes(buffer);
+    std::size_t written_bytes = vector_clock.toBytes(cur_pointer);
     cur_pointer += written_bytes;
 
     // write all the messages (string that terminates with \0)
@@ -107,32 +107,47 @@ Packet Packet::decodeData(char * data){
     assert((i >= 2) == true);
     cur_pointer += i;
 
-   // DEBUG_MSG("meaning of numbers: source_id, process_id, packet_seq_num, first_msg_seq_num, is_ack, payload_length");
-    // DEBUG_MSG("PERFECT_LINK READING " << source_id_str << " " << process_id_str << " " << packet_seq_num_str << " " << first_msg_seq_num_str << " " << is_ack_str << " " << payload_length_str << "\n");
+     //DEBUG_MSG("meaning of numbers: source_id, process_id, packet_seq_num, first_msg_seq_num, is_ack, payload_length");
+     //DEBUG_MSG("PERFECT_LINK READING " << source_id_str << " " << process_id_str << " " << packet_seq_num_str << " " << first_msg_seq_num_str << " " << is_ack_str << " " << payload_length_str << "\n");
 
     std::size_t i_source_id = std::stoul(source_id_str);
     std::size_t i_process_id = std::stoul(process_id_str);
     std::size_t i_packet_seq_num = std::stoul(packet_seq_num_str);
+
     std::size_t i_first_msg_seq_num = std::stoul(first_msg_seq_num_str);
     bool is_ack = static_cast<bool>(std::stoi(is_ack_str));
     std:size_t i_num_processes = std::stoul(num_processes_str);
 
     // decode Vector Clocks
     VectorClock i_vector_clock = VectorClock::decodeData(cur_pointer, i_num_processes);
-    cur_pointer += i_vector_clock.getBytesLength();
+    //DEBUG_MSG("Successfully read Vector clock");
+
+    /*
+    if (i_packet_seq_num >= 10){
+        std::cout<<"packet seq num is: " <<i_packet_seq_num <<std::endl;
+    }
+    */
+
+    std::size_t vc_length = i_vector_clock.getBytesLength();
+    cur_pointer += vc_length;
+
+
     
     if (is_ack){
         return createAck(i_process_id, i_source_id,  i_packet_seq_num, i_num_processes, i_vector_clock);
     }
     else{
+       // DEBUG_MSG("About to decode payload length");
         std::size_t payload_length = std::stoul(payload_length_str);
+        //DEBUG_MSG("Successfully decoded payload length");
         // parse messages
         Packet p = Packet(i_process_id, i_source_id, i_packet_seq_num, i_num_processes, i_vector_clock); 
         while (p.payload_length < payload_length){
+            //DEBUG_MSG("About to decode message number " << p.getNumMessages() << ".Current packet length: " << p.getLength());
             Message cur_message = Message::decodeData(cur_pointer); //retrieve current message
             if (!p.canAddMessage(cur_message)){
                 std::cerr << "Error when trying to reconstruct Packet !!!\n";
-                std::cerr << "Expected payload length: " << payload_length << "\n";
+                std::cerr << "Expected payload length: " << payload_length << " header length: " << p.getHeaderLength() << " vector clock length: " << i_vector_clock.getBytesLength() << "\n";
             }
             p.addMessage(cur_message);
             cur_pointer += cur_message.get_length();

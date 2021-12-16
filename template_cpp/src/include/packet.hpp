@@ -137,17 +137,23 @@ class Packet{
 
         // return length of Packet in bytes
         std::size_t getLength(){
-            std::size_t header_length = std::to_string(process_id).size() + 
+            std::size_t header_length = getHeaderLength(); //NULL characters
+
+            std::size_t vc_length = vector_clock.getBytesLength();
+
+            return header_length + vc_length + payload_length; 
+        }
+
+
+        std::size_t getHeaderLength(){
+             std::size_t header_length = std::to_string(process_id).size() + 
                                 std::to_string(packet_seq_num).size() + 
                                 std::to_string(source_id).size() + 
                                 std::to_string(first_msg_seq_num).size() +
                                 std::to_string(static_cast<unsigned int>(is_ack)).size() +
                                 std::to_string(payload_length).size() +
-                                std::to_string(num_processes).size() + 7; //NULL characters
-
-            std::size_t vc_length = vector_clock.getBytesLength();
-
-            return header_length + vc_length + payload_length; 
+                                std::to_string(num_processes).size() + 7;
+            return header_length;
         }
 
 

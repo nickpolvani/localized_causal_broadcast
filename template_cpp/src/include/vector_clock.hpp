@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstddef>
 #include <assert.h>
+#include "debug.h"
 
 class VectorClock{
     private:
@@ -76,7 +77,7 @@ class VectorClock{
         // writes vector clock values separated by '\0' as char representation to buffer,
         // returns number of bytes written
         std::size_t toBytes(char * buffer){
-            char* cur_pointer = buffer;
+            char* cur_pointer = &buffer[0];
             std::size_t num_bytes = 0;
             for (std::size_t i = 0; i < num_processes; i++){
                 const char* cur_val = std::to_string(values[i]).c_str();
@@ -91,23 +92,26 @@ class VectorClock{
         // return length of bytes representation
         std::size_t getBytesLength(){
             std::size_t vc_length = 0;
-            for (std::size_t id = 1; id <= num_processes; id++){
-                vc_length += std::to_string(getValue(id)).size() + 1;//NULL char 
+            for (std::size_t id = 0; id < num_processes; id++){
+                std::string val_str = std::to_string(values[id]);
+                vc_length += val_str.size() + 1; //NULL char 
             }
             return vc_length;
         }
 
         // from char* representation to VectorClock
         static VectorClock decodeData(char * data, std::size_t num_processes){
+           // DEBUG_MSG("About to decode Vector Clock");
             VectorClock res = VectorClock(num_processes);
-            char* cur_pointer = data;
+            char* cur_pointer = &data[0];
             for (std::size_t i = 0; i < num_processes; i++){
                 std::size_t size = 0;
                 while (cur_pointer[size] != '\0'){
                     size++;
                 }
                 res.values[i] = std::stoul(std::string(cur_pointer, size));
-                cur_pointer += size;
+                cur_pointer += size + 1;
+               // DEBUG_MSG("Vector clock for process " << i+1 << " is: " << res.values[i]);
             }
             return res;
         }

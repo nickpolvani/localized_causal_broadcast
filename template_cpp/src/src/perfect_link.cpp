@@ -79,7 +79,7 @@ void PerfectLink::sendPackets(){
         }
         outbox.sendPackets(&udp_socket);
         sender_lock.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2 * 1000));
     }
 }
 
