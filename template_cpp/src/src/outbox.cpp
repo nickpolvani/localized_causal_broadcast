@@ -14,9 +14,9 @@ void OutBox::addPacket(Packet_ProcId const pack_and_dest){
         cv_add.wait(lock);
     }
     curr_size += 1;
-    long unsigned int dest_id = pack_and_dest.dest_proc_id;
-    long unsigned int source_id = pack_and_dest.packet.source_id;
-    long unsigned int seq_num = pack_and_dest.packet.packet_seq_num;
+    std::size_t dest_id = pack_and_dest.dest_proc_id;
+    std::size_t source_id = pack_and_dest.packet.source_id;
+    std::size_t seq_num = pack_and_dest.packet.packet_seq_num;
     packets[dest_id][source_id][seq_num] = pack_and_dest.packet; 
 
     //destructor of lock releases the mutex
@@ -51,11 +51,11 @@ void OutBox::sendPackets(UDPSocket * udp_socket){
     // iterate destination process ids
     for (auto it_dest_proc_id = packets.begin(); it_dest_proc_id != packets.end(); ++it_dest_proc_id){
         SourceId_2_SeqNum_2_Packet source2seq2pack = it_dest_proc_id -> second;
-        long unsigned int dest_id = it_dest_proc_id -> first;
+        std::size_t dest_id = it_dest_proc_id -> first;
         sockaddr_in dest_addr = (*host_addresses)[dest_id];
         // iterate source id
         for (auto it_source_id = source2seq2pack.begin(); it_source_id != source2seq2pack.end(); ++ it_source_id){
-            std::map<long unsigned int, Packet> seq2pack = it_source_id -> second;
+            std::map<std::size_t, Packet> seq2pack = it_source_id -> second;
             // iterate sequence number
             for (auto it_seq = seq2pack.begin(); it_seq != seq2pack.end(); ++it_seq){
                 udp_socket -> send(it_seq -> second, reinterpret_cast<sockaddr*> (&dest_addr));
@@ -64,16 +64,17 @@ void OutBox::sendPackets(UDPSocket * udp_socket){
     }
 }
 
+
 void OutBox::debug(){
     std::unique_lock<std::mutex> lock(mutex);
     // iterate destination process ids
     for (auto it_dest_proc_id = packets.begin(); it_dest_proc_id != packets.end(); ++it_dest_proc_id){
         SourceId_2_SeqNum_2_Packet source2seq2pack = it_dest_proc_id -> second;
-        long unsigned int dest_id = it_dest_proc_id -> first;
+        std::size_t dest_id = it_dest_proc_id -> first;
         sockaddr_in dest_addr = (*host_addresses)[dest_id];
         // iterate source id
         for (auto it_source_id = source2seq2pack.begin(); it_source_id != source2seq2pack.end(); ++ it_source_id){
-            std::map<long unsigned int, Packet> seq2pack = it_source_id -> second;
+            std::map<std::size_t, Packet> seq2pack = it_source_id -> second;
             // iterate sequence number
             for (auto it_seq = seq2pack.begin(); it_seq != seq2pack.end(); ++it_seq){
                 std::cout << "dest: " << dest_id << " source: " << it_source_id->first << " seq_num: " << it_seq->first << "\n";

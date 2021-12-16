@@ -7,7 +7,7 @@ static bool debug_mode = true;
 
 // hosts contains a mapping process_id, socket address
 // port_num: port number on network byte order
-PerfectLink::PerfectLink(unsigned long int i_process_id, std::map<long unsigned int, sockaddr_in>* i_host_addresses, unsigned short port_num) :
+PerfectLink::PerfectLink(unsigned long int i_process_id, std::map<std::size_t, sockaddr_in>* i_host_addresses, unsigned short port_num) :
     process_id(i_process_id), udp_socket(port_num, -1), host_addresses(i_host_addresses), outbox(NULL)
 {
     outbox.host_addresses = i_host_addresses;
@@ -43,8 +43,8 @@ void PerfectLink::processArrivedMessages(){
         }
         else{
             DEBUG_MSG("PERFECT-LINK received packet: source" <<  received.source_id << " sender: " << received.process_id << " seq_num: "  << received.packet_seq_num);
-            Packet ack = Packet::createAck(process_id, received.source_id, received.packet_seq_num);
-            long unsigned int dest_proc_id = received.process_id;
+            Packet ack = Packet::createAck(process_id, received.source_id, received.packet_seq_num, received.num_processes, received.vector_clock);
+            std::size_t dest_proc_id = received.process_id;
             Packet_ProcId ack_and_dest = Packet_ProcId(ack, dest_proc_id);
             acks_to_send.push(ack_and_dest);
 

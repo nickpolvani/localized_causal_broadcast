@@ -10,13 +10,14 @@
 #include "process_controller.hpp"
 #include <mutex> 
 #include <condition_variable>
+#include "vector_clock.hpp"
 
 using namespace packet;
 
 class UniformReliableBroadcast;
 class ProcessController;
 
-class FifoBroadcast{
+class CausalBroadcast{
 
     private:
 
@@ -27,13 +28,19 @@ class FifoBroadcast{
         bool can_broadcast = true;   
 
         // current packet sequence number for this process
-        long unsigned int cur_seq_num = 0;
+        std::size_t cur_seq_num = 0;
         
-        // pending[source_id][seq_num] returns the corresponding packet (process_id does not matter in packets)
-        std::map<long unsigned int, std::map<long unsigned int, Packet>> pending;
+        // pending[vector_clock][source_id] returns the corresponding packet (process_id does not matter in packets)
+        std::map<VectorClock, std::map<std::size_t, Packet>> pending;
 
-        // next[source_id] returns the next expected packet sequence number from process with id source_id
-        std::map<long unsigned int, long unsigned int> next;
+        // total number of processes in the distributed system
+        std::size_t num_processes;
+
+        std::set<std::size_t> locality;
+
+        VectorClock vc_send;
+
+        VectorClock vc_recv;
 
         // lower level abstraction
         UniformReliableBroadcast * urb = NULL;
@@ -41,21 +48,23 @@ class FifoBroadcast{
         ThreadSafeQueue<Packet> packets_to_deliver;
 
         // permanent Thread that consumes packets_to_deliver
-        void fifoDeliver();
+        void causalDeliver();
 
         //  Thread creating packets containing messages with
         // seq num from 1 to num_messages included, and broadcast them to other processes
         void broadcast();
 
         // number of messages to broadcast
-        long unsigned int num_messages;
+        std::size_t num_messages;
 
         ProcessController * process_controller;
+
+        VectorClock getSendVectorClock();
 
 
     public:
         // initializes next, and sets num_messags
-        FifoBroadcast(ProcessController * process_controller, long unsigned int i_num_messages, std::vector<Parser::Host> hosts);
+        CausalBroadcast(ProcessController * process_controller, std::size_t i_num_messages, std::vector<Parser::Host> hosts, std::set<std::size_t> locality);
 
 
         // contains threads that execute fifoDeliver, broadcast

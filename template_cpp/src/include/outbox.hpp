@@ -12,7 +12,7 @@
 using namespace packet;
 
 
-typedef std::map<long unsigned int, std::map<long unsigned int, Packet>> SourceId_2_SeqNum_2_Packet;
+typedef std::map<std::size_t, std::map<std::size_t, Packet>> SourceId_2_SeqNum_2_Packet;
 
 
 class OutBox{
@@ -28,16 +28,16 @@ class OutBox{
         // packets kept in the outbox
         // packet.process_id is the process owning the outbox, 
         // so it is the same for all packets
-        std::map<long unsigned int, // destination process id
-                    std::map<long unsigned int, // source process id
-                        std::map<long unsigned int, // packet sequence number
+        std::map<std::size_t, // destination process id
+                    std::map<std::size_t, // source process id
+                        std::map<std::size_t, // packet sequence number
                             Packet>>> packets;
 
-        std::map<long unsigned int, sockaddr_in> * host_addresses;
+        std::map<std::size_t, sockaddr_in> * host_addresses;
 
     public:
 
-        explicit OutBox(std::map<long unsigned int, sockaddr_in> * host_addresses) :
+        explicit OutBox(std::map<std::size_t, sockaddr_in> * host_addresses) :
             host_addresses(host_addresses){}
 
         /* adds packet to outbox, if it is full

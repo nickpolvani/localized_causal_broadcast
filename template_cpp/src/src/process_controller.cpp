@@ -1,6 +1,7 @@
 #include "process_controller.hpp"
+#include <sstream>
 
-ProcessController::ProcessController(long unsigned int id, Parser parser): 
+ProcessController::ProcessController(std::size_t id, Parser parser): 
 hosts(parser.hosts()), process_id(id)
 {
     //populate host_addresses
@@ -19,6 +20,23 @@ hosts(parser.hosts()), process_id(id)
         exit(EXIT_FAILURE);
     }
     config_file >> num_messages;
+
+    std::string line;
+    while(std::getline(config_file, line)){
+        std::istringstream iss(line);
+        std::size_t cur_process;
+        iss >> cur_process;
+        if (cur_process != process_id){
+            continue;
+        }
+        else{
+            std::size_t other_process;
+            while (!iss.eof()){
+                iss >> other_process;
+                locality.insert(other_process);
+            }
+        }
+    }
     config_file.close();
 
     output_file.open(parser.outputPath());
@@ -34,7 +52,7 @@ hosts(parser.hosts()), process_id(id)
 void ProcessController::onPacketDelivered(packet::Packet p){
     std::string out_content;
     // packet contains multiple messages
-    for (long unsigned int i = p.first_msg_seq_num; i < p.first_msg_seq_num + p.getNumMessages(); i++){
+    for (std::size_t i = p.first_msg_seq_num; i < p.first_msg_seq_num + p.getNumMessages(); i++){
         out_content += "d " + std::to_string(p.source_id) + " " +  std::to_string(i) + "\n";
     }
     output_file << out_content;
@@ -44,7 +62,7 @@ void ProcessController::onPacketDelivered(packet::Packet p){
 
  void ProcessController::onPacketBroadcast(packet::Packet p){
     std::string out_content;
-    for (long unsigned int i = p.first_msg_seq_num; i < p.first_msg_seq_num + p.getNumMessages(); i++){
+    for (std::size_t i = p.first_msg_seq_num; i < p.first_msg_seq_num + p.getNumMessages(); i++){
         out_content += "b " + std::to_string(i) + "\n";
     }
     DEBUG_MSG("Process Controller writing broadcast");
@@ -61,14 +79,14 @@ void ProcessController::onPacketDelivered(packet::Packet p){
      beb -> setURB(urb);
      urb -> setBEB(beb);
 
-     fifo_broadcast = new FifoBroadcast(this, num_messages, hosts);
-     urb -> setFifoBroadcast(fifo_broadcast);
-     fifo_broadcast -> setUrb(urb);
+     causal_broadcast = new CausalBroadcast(this, num_messages, hosts, locality);
+     urb -> setCausalBroadcast(causal_broadcast);
+     causal_broadcast -> setUrb(urb);
 
      perfect_link -> start();
      beb -> start();
      urb -> start();
-     fifo_broadcast -> start();
+     causal_broadcast -> start();
 
      for (auto thread : perfect_link -> threads){
          thread->join();
@@ -79,7 +97,7 @@ void ProcessController::onPacketDelivered(packet::Packet p){
      for (auto thread : urb -> threads){
          thread->join();
      }
-     for (auto thread : fifo_broadcast -> threads){
+     for (auto thread : causal_broadcast -> threads){
          thread->join();
      }
  }

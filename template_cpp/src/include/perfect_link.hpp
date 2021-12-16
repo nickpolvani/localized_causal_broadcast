@@ -28,11 +28,11 @@ class PerfectLink{
 
         ThreadSafeQueue<Packet> received_packets;
 
-        std::map<long unsigned int, sockaddr_in> * host_addresses;
+        std::map<std::size_t, sockaddr_in> * host_addresses;
 
         // delivered[process_id][source_id] returns the set of sequence numbers of packets delivered
         // that were received from process_id, with original sender source_id
-        std::map<long unsigned int, std::map<long unsigned int, std::set<long unsigned int>>> delivered;
+        std::map<std::size_t, std::map<std::size_t, std::set<std::size_t>>> delivered;
 
         // queue of packets that have to be added to OutBox
         ThreadSafeQueue<Packet_ProcId> packets_to_send;
@@ -79,7 +79,7 @@ class PerfectLink{
 
         // hosts contains a mapping process_id, socket address
         // port_num: port number on network byte order
-        PerfectLink(unsigned long int process_id, std::map<long unsigned int, sockaddr_in>* i_host_addresses, unsigned short port_num);
+        PerfectLink(unsigned long int process_id, std::map<std::size_t, sockaddr_in>* i_host_addresses, unsigned short port_num);
 
 
         void setBEB(BestEffortBroadcast * i_beb){

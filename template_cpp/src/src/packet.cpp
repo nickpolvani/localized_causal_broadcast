@@ -15,6 +15,7 @@ void Packet::toBytes(char * buffer){
     std::string first_msg_seq_num_str = std::to_string(first_msg_seq_num);
     std::string is_ack_str = std::to_string(static_cast<unsigned int>(is_ack));
     std::string payload_length_str = std::to_string(payload_length);
+    std::string num_processes_str = std::to_string(num_processes);
 
     // write header to buffer
     memcpy(cur_pointer, source_id_str.c_str(), source_id_str.size() + 1);
@@ -35,6 +36,13 @@ void Packet::toBytes(char * buffer){
 
     memcpy(cur_pointer, payload_length_str.c_str(), payload_length_str.size() + 1);
     cur_pointer += payload_length_str.size() + 1;
+
+    memcpy(cur_pointer, num_processes_str.c_str(), num_processes_str.size() + 1);
+    cur_pointer += num_processes_str.size() + 1;
+
+    // write Vector Clock to buffer
+    std::size_t written_bytes = vector_clock.toBytes(buffer);
+    cur_pointer += written_bytes;
 
     // write all the messages (string that terminates with \0)
     for (Message message : messages){
@@ -69,6 +77,7 @@ Packet Packet::decodeData(char * data){
     std::string first_msg_seq_num_str;
     std::string is_ack_str;
     std::string payload_length_str;
+    std::string num_processes_str;
 
     int i = copyString(cur_pointer, &source_id_str);
     assert((i > 1) == true);
@@ -94,21 +103,31 @@ Packet Packet::decodeData(char * data){
     assert((i >= 2) == true);
     cur_pointer += i;
     
+    i = copyString(cur_pointer, &num_processes_str);
+    assert((i >= 2) == true);
+    cur_pointer += i;
+
    // DEBUG_MSG("meaning of numbers: source_id, process_id, packet_seq_num, first_msg_seq_num, is_ack, payload_length");
     // DEBUG_MSG("PERFECT_LINK READING " << source_id_str << " " << process_id_str << " " << packet_seq_num_str << " " << first_msg_seq_num_str << " " << is_ack_str << " " << payload_length_str << "\n");
 
-    long unsigned int i_source_id = std::stoul(source_id_str);
-    long unsigned int i_process_id = std::stoul(process_id_str);
-    long unsigned int i_packet_seq_num = std::stoul(packet_seq_num_str);
-    long unsigned int i_first_msg_seq_num = std::stoul(first_msg_seq_num_str);
+    std::size_t i_source_id = std::stoul(source_id_str);
+    std::size_t i_process_id = std::stoul(process_id_str);
+    std::size_t i_packet_seq_num = std::stoul(packet_seq_num_str);
+    std::size_t i_first_msg_seq_num = std::stoul(first_msg_seq_num_str);
     bool is_ack = static_cast<bool>(std::stoi(is_ack_str));
+    std:size_t i_num_processes = std::stoul(num_processes_str);
+
+    // decode Vector Clocks
+    VectorClock i_vector_clock = VectorClock::decodeData(cur_pointer, i_num_processes);
+    cur_pointer += i_vector_clock.getBytesLength();
+    
     if (is_ack){
-        return createAck(i_process_id, i_source_id,  i_packet_seq_num);
+        return createAck(i_process_id, i_source_id,  i_packet_seq_num, i_num_processes, i_vector_clock);
     }
     else{
-        long unsigned int payload_length = std::stoul(payload_length_str);
+        std::size_t payload_length = std::stoul(payload_length_str);
         // parse messages
-        Packet p = Packet(i_process_id, i_source_id, i_packet_seq_num); 
+        Packet p = Packet(i_process_id, i_source_id, i_packet_seq_num, i_num_processes, i_vector_clock); 
         while (p.payload_length < payload_length){
             Message cur_message = Message::decodeData(cur_pointer); //retrieve current message
             if (!p.canAddMessage(cur_message)){

@@ -8,10 +8,11 @@
 #include <stdexcept>
 #include "debug.h"
 #include <iostream>
+#include "vector_clock.hpp"
 
 namespace packet{
 
-const int MAX_LENGTH = 2048; // max length of Packet in bytes
+const int MAX_LENGTH = 4096; // max length of Packet in bytes
 
 class Message{
     private:
@@ -62,20 +63,24 @@ class Packet{
 
     public:
         static const int max_length = MAX_LENGTH; // in bytes
-        long unsigned int process_id;   // process id of the sender
-        long unsigned int source_id;    // process id of the original process that sent this packet
-        long unsigned int packet_seq_num;   // sequence number of the packet
-        long unsigned int first_msg_seq_num = 0; // sequence number of the first message
-        long unsigned int payload_length = 0; // number of bytes of payload
+        std::size_t process_id;   // process id of the sender
+        std::size_t source_id;    // process id of the original process that sent this packet
+        std::size_t packet_seq_num;   // sequence number of the packet
+        std::size_t first_msg_seq_num = 0; // sequence number of the first message
+        std::size_t payload_length = 0; // number of bytes of payload
+        std::size_t num_processes; // number of processes in the system
+        VectorClock vector_clock;  // has length equal to num_processes
         bool is_ack = false;
 
-        Packet(long unsigned int i_process_id, long unsigned int i_source_id, long unsigned int i_packet_seq_num) : 
-            process_id(i_process_id), source_id(i_source_id), packet_seq_num(i_packet_seq_num){};
+        Packet(std::size_t i_process_id, std::size_t i_source_id, std::size_t i_packet_seq_num, 
+                        std::size_t i_num_processes, VectorClock i_vector_clock) : 
+            process_id(i_process_id), source_id(i_source_id), packet_seq_num(i_packet_seq_num), 
+            num_processes(i_num_processes), vector_clock(i_vector_clock){};
         
         Packet(): process_id(0), source_id(0), packet_seq_num(0){};
 
         // called when re-broadcasting a received message
-        void changeSenderId(long unsigned int new_id){
+        void changeSenderId(std::size_t new_id){
             process_id = new_id;
             if(getLength() > MAX_LENGTH){
                 throw(std::length_error("Changing sender id is not possible: size: " + std::to_string(getLength()) + " greater than MAX_SIZE\n" ));
@@ -131,20 +136,23 @@ class Packet{
         }
 
         // return length of Packet in bytes
-        long unsigned int getLength(){
-            long unsigned int header_length = std::to_string(process_id).size() + 
+        std::size_t getLength(){
+            std::size_t header_length = std::to_string(process_id).size() + 
                                 std::to_string(packet_seq_num).size() + 
                                 std::to_string(source_id).size() + 
                                 std::to_string(first_msg_seq_num).size() +
                                 std::to_string(static_cast<unsigned int>(is_ack)).size() +
-                                std::to_string(payload_length).size() + 6; //NULL characters
+                                std::to_string(payload_length).size() +
+                                std::to_string(num_processes).size() + 7; //NULL characters
 
-            return header_length + payload_length; 
+            std::size_t vc_length = vector_clock.getBytesLength();
+
+            return header_length + vc_length + payload_length; 
         }
 
 
         //return message at position i
-        Message getMessage(long unsigned int i){
+        Message getMessage(std::size_t i){
             return messages[i];
         }
 
@@ -153,8 +161,9 @@ class Packet{
         /* i_process_id: id of the process that sent the ack (therefore received the corresponding message).
            i_progressive_number: progressive number of the message received
         */
-        static Packet createAck(long unsigned int i_process_id, long unsigned int i_source_id, long unsigned int i_packet_seq_num){
-            Packet ackPacket = Packet(i_process_id, i_source_id, i_packet_seq_num);
+        static Packet createAck(std::size_t i_process_id, std::size_t i_source_id, std::size_t i_packet_seq_num,
+                                std::size_t num_processes, VectorClock vector_clock){
+            Packet ackPacket = Packet(i_process_id, i_source_id, i_packet_seq_num, num_processes, vector_clock);
             ackPacket.is_ack = true;
             ackPacket.payload_length = 0;
             return ackPacket;
