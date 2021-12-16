@@ -22,29 +22,24 @@ VectorClock CausalBroadcast::getSendVectorClock(){
 }
 
 void CausalBroadcast::URBDeliver(Packet p){
-    pending[p.vector_clock][p.source_id] = p;
-    for (auto it_vc = pending.begin(); it_vc != pending.end(); /* no increment */){
-        VectorClock cur_vc = it_vc->first;
+    pending[p.source_id][p.packet_seq_num] = p;
+    while(pending[p.source_id].count(next[p.source_id]) == 1){
 
-        // deliver packets with older vector clocks
-        if (cur_vc <= p.vector_clock){  
-            // iterate for all source processes
-            for (auto it_s = it_vc->second.begin(); it_s != it_vc->second.end(); it_s++){
-                std::size_t source_id = it_s -> first;
-                Packet cur_packet = it_s -> second;
-                vc_recv.increase(source_id);
-                if (locality.count(source_id) == 1){
-                    vc_send.increase(source_id);
-                }
-                packets_to_deliver.push(cur_packet);
+        Packet cur_packet = pending[p.source_id][next[p.source_id]];
+        if (cur_packet.vector_clock <= p.vector_clock){
+            next[cur_packet.source_id] = next[cur_packet.source_id] + 1;
+            pending[cur_packet.source_id].erase(cur_packet.packet_seq_num);
+            vc_recv.increase(p.source_id);
+            if (locality.count(p.source_id) == 1){
+                vc_send.increase(p.source_id);
             }
-            // eliminate all those vector clocks from pending and increment iterator
-            it_vc = pending.erase(it_vc);
+            packets_to_deliver.push(cur_packet);
         }
-        else{ // since pending is ordered in terms of vector clocks, we don't have lower vector clocks in pending
+        else{
             break;
         }
     }
+   
 }
 
 void CausalBroadcast::causalDeliver(){

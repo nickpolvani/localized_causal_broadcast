@@ -30,8 +30,11 @@ class CausalBroadcast{
         // current packet sequence number for this process
         std::size_t cur_seq_num = 0;
         
-        // pending[vector_clock][source_id] returns the corresponding packet (process_id does not matter in packets)
-        std::map<VectorClock, std::map<std::size_t, Packet>> pending;
+        // pending[source_id][seg_num] returns the corresponding packet (process_id does not matter in packets)
+        std::map<std::size_t, std::map< std::size_t, Packet>> pending;
+
+        // next[source_id] returns the next expected packet sequence number from process with id source_id
+        std::map<long unsigned int, long unsigned int> next;
 
         // total number of processes in the distributed system
         std::size_t num_processes;
