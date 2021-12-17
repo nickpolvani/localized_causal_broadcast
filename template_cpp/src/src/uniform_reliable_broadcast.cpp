@@ -10,7 +10,7 @@ void UniformReliableBroadcast::URBDeliver(){
     assert((causal_broadcast != NULL) == true);
     while(true){
         Packet p = packets_to_deliver.pop();
-        DEBUG_MSG("URBDeliver: packet source: " <<  p.source_id << " sender: " << p.process_id << " seq_num: "  << p.packet_seq_num);
+        //DEBUG_MSG("URBDeliver: packet source: " <<  p.source_id << " sender: " << p.process_id << " seq_num: "  << p.packet_seq_num);
         causal_broadcast -> URBDeliver(p);
     }
 }

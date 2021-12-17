@@ -21,6 +21,8 @@ class CausalBroadcast{
 
     private:
 
+        bool end_broadcast = false;
+
         std::mutex mutex;
         // condition variable to wait on broadcast until packet is delivered to not flood the network
         std::condition_variable broadcast_cv;
@@ -51,7 +53,7 @@ class CausalBroadcast{
         ThreadSafeQueue<Packet> packets_to_deliver;
 
         // permanent Thread that consumes packets_to_deliver
-        void causalDeliver();
+        void causalDeliver(Packet p);
 
         //  Thread creating packets containing messages with
         // seq num from 1 to num_messages included, and broadcast them to other processes

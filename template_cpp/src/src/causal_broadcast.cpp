@@ -10,6 +10,9 @@ CausalBroadcast::CausalBroadcast(ProcessController * i_process_controller, std::
     locality = i_locality;    
     vc_send = VectorClock(hosts.size());
     vc_recv = VectorClock(hosts.size());
+    for (auto host : hosts){
+        next[host.id] = 0;
+    }
 }
 
 
@@ -26,6 +29,7 @@ void CausalBroadcast::URBDeliver(Packet p){
     while(can_broadcast){
         broadcast_cv.wait(lock);
     }
+    DEBUG_MSG("About to deliver packet " << p.packet_seq_num << " from process: " << p.source_id);
     pending[p.source_id][p.packet_seq_num] = p;
     while(pending[p.source_id].count(next[p.source_id]) == 1){
 
@@ -37,7 +41,7 @@ void CausalBroadcast::URBDeliver(Packet p){
             if (locality.count(p.source_id) == 1){
                 vc_send.increase(p.source_id);
             }
-            packets_to_deliver.push(cur_packet);
+            causalDeliver(cur_packet);
         }
         else{
             break;
@@ -46,17 +50,15 @@ void CausalBroadcast::URBDeliver(Packet p){
    
 }
 
-void CausalBroadcast::causalDeliver(){
-    while(true){
-        Packet p = packets_to_deliver.pop();
-        DEBUG_MSG("FIFO: about to deliver packet: " <<  p.source_id << " " << p.packet_seq_num);
-        // if I deliver the packet I broadcasted I can broadcast the next one
-        if (p.source_id == process_controller ->process_id){
-            can_broadcast = true;
-            broadcast_cv.notify_all();
-        }
-        process_controller -> onPacketDelivered(p);
+void CausalBroadcast::causalDeliver(Packet p){
+    DEBUG_MSG("CAUSAL: about to deliver packet: " <<  p.source_id << " " << p.packet_seq_num);
+    // if I deliver the packet I broadcasted I can broadcast the next one
+    process_controller -> onPacketDelivered(p);
+    if (p.source_id == process_controller ->process_id && (!end_broadcast)){
+        can_broadcast = true;
+        broadcast_cv.notify_all();
     }
+    
 }
 
 
@@ -66,7 +68,6 @@ void CausalBroadcast::broadcast(){
     unsigned long int process_id = process_controller -> process_id;
 
     std::unique_lock lock(mutex);
-
 
     // create and send Packets
     VectorClock vector_clock_send = getSendVectorClock();
@@ -106,18 +107,19 @@ void CausalBroadcast::broadcast(){
             // set before because otherwise I could execute the delivery and then set this variable to false again
             // having a deadlock
             can_broadcast = false;
+            end_broadcast = true;
             urb -> broadcast(curr_packet);
             cur_seq_num++;
+            broadcast_cv.notify_all();
         }
     }
+    DEBUG_MSG("Finished broadcasting");
 }
 
 
 
 void CausalBroadcast::start(){
-    std::thread * deliver_thread = new std::thread([this] {this -> causalDeliver();});
     std::thread * broadcast_thread = new std::thread([this] {this -> broadcast();});
 
-    threads.push_back(deliver_thread);
     threads.push_back(broadcast_thread);
 }
