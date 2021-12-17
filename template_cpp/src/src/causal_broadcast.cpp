@@ -22,6 +22,10 @@ VectorClock CausalBroadcast::getSendVectorClock(){
 }
 
 void CausalBroadcast::URBDeliver(Packet p){
+    std::unique_lock<std::mutex> lock(mutex);
+    while(can_broadcast){
+        broadcast_cv.wait(lock);
+    }
     pending[p.source_id][p.packet_seq_num] = p;
     while(pending[p.source_id].count(next[p.source_id]) == 1){
 
@@ -84,6 +88,12 @@ void CausalBroadcast::broadcast(){
             can_broadcast = false;   
             urb -> broadcast(curr_packet);
             cur_seq_num++;
+
+            broadcast_cv.notify_all();  //broadcasted, so I wake up deliver thread
+            while(!can_broadcast){
+                broadcast_cv.wait(lock);
+            }
+
             vector_clock_send = getSendVectorClock();
             curr_packet = Packet(process_id, process_id, cur_seq_num, num_processes, vector_clock_send);
         }

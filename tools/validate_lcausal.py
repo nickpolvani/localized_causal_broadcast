@@ -126,8 +126,8 @@ def check_causal(out_paths: list, localities: dict):
     msg_vc = {}
     for p in range(1, len(out_paths) + 1):
          # current vector clock for a message (dependencies of a newly sent message)
-        v_send = [1 for _ in range(len(out_paths))]
-        seqnum = 1
+        v_send = [0 for _ in range(len(out_paths))]
+        seqnum = 0
 
         # going over events
         for event in events[p]:
@@ -155,7 +155,7 @@ def check_causal(out_paths: list, localities: dict):
     # PROPERTY TEST: for each process, for each delivery, must have W <= V_recv
     for p in range(1, len(out_paths) + 1):
         # currently delivered messages by process
-        v_recv = [1 for _ in range(len(out_paths))]
+        v_recv = [0 for _ in range(len(out_paths))]
 
         # loop over events
         for event in events[p]:
