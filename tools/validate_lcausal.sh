@@ -2,5 +2,7 @@
 
 # Change the current working directory to the location of the present file
 cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-rm ../example/output/*
-python3 ./stress.py -r ../template_cpp/run.sh -t lcausal -l ../example/output -p 10 -m 100000
+
+echo Validating FIFO... 
+
+python validate_lcausal.py --config_file ../example/output/config --out_dir ../example/output
