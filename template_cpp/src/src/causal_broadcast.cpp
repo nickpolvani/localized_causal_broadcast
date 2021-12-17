@@ -26,7 +26,7 @@ void CausalBroadcast::URBDeliver(Packet p){
     while(pending[p.source_id].count(next[p.source_id]) == 1){
 
         Packet cur_packet = pending[p.source_id][next[p.source_id]];
-        if (cur_packet.vector_clock <= p.vector_clock){
+        if (cur_packet.vector_clock <= vc_recv){
             next[cur_packet.source_id] = next[cur_packet.source_id] + 1;
             pending[cur_packet.source_id].erase(cur_packet.packet_seq_num);
             vc_recv.increase(p.source_id);
